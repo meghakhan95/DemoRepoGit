@@ -1,0 +1,74 @@
+trigger:
+- main
+variables:
+- name: BuildParameters.solution
+  value: '**\*.sln'
+name: $(date:yyyyMMdd)$(rev:.r)
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    name: NewDemoPool
+  steps:
+  - checkout: self
+  - task: NuGetToolInstaller@0
+    displayName: Use NuGet 4 ver
+    enabled: False
+    inputs:
+      versionSpec: 4.4.1
+  - task: NuGetCommand@2
+    displayName: NuGet restore
+    enabled: False
+    inputs:
+      solution: $(BuildParameters.solution)
+      feedRestore: edf9b2d7-10c6-4647-bb23-2f7bb4c463d7/6496f987-3025-4250-9046-136712e02d97
+  - task: VSBuild@1
+    displayName: Build solution **\*.sln
+    enabled: False
+    inputs:
+      solution: $(BuildParameters.solution)
+      platform: $(BuildPlatform)
+      configuration: $(BuildConfiguration)
+  - task: VSTest@2
+    displayName: VsTest - testAssemblies
+    enabled: False
+    inputs:
+      testAssemblyVer2: >-
+        **\$(BuildConfiguration)\*test*.dll
+
+        !**\obj\**
+      platform: $(BuildPlatform)
+      configuration: $(BuildConfiguration)
+  - task: PublishSymbols@2
+    displayName: Publish symbols path
+    continueOnError: True
+    enabled: False
+    inputs:
+      SearchPattern: '**\bin\**\*.pdb'
+      PublishSymbols: false
+      SymbolServerType: TeamServices
+  - task: CopyFiles@2
+    displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+    condition: succeededOrFailed()
+    inputs:
+      SourceFolder: $(system.defaultworkingdirectory)
+      Contents: '**\bin\$(BuildConfiguration)\**'
+      TargetFolder: $(build.artifactstagingdirectory)
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    condition: succeededOrFailed()
+    inputs:
+      PathtoPublish: $(build.artifactstagingdirectory)
+      TargetPath: '\\my\share\$(Build.DefinitionName)\$(Build.BuildNumber)'
+  - task: NuGetCommand@2
+    displayName: NuGet pack
+    enabled: False
+    inputs:
+      command: pack
+  - task: NuGetCommand@2
+    displayName: NuGet push
+    enabled: False
+    inputs:
+      command: push
+      feedPublish: edf9b2d7-10c6-4647-bb23-2f7bb4c463d7/6496f987-3025-4250-9046-136712e02d97
+...
