@@ -1,8 +1,11 @@
 #!/bin/sh
 
-branch="$(git rev-parse --abbrev-ref HEAD)"
+# if the branch is main, then fail.
 
-if [ "$branch" = "main" ]; then
-  echo "You can't commit directly to master branch"
+branch="$(git symbolic-ref HEAD 2>/dev/null)" || \
+  "$(git describe --contains --all HEAD)"
+
+if [ "${branch##refs/heads/}" = "main" ]; then
+  echo "Do not commit on the main branch!"
   exit 1
 fi
